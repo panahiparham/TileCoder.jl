@@ -41,8 +41,7 @@ struct TileCoderConfig
     input_ranges:: Optional(Array{Range})
     bound:: String
 
-    function TileCoderConfig(tiles, tilings, dims; offset = "cascade", scale_output = true, input_ranges = nothing, bound = "wrap")
-            # return new(tiles, tilings, dims, offset, scale_output, input_ranges, bound)
+    function TileCoderConfig(tiles, tilings, dims; offset = "cascade", scale_output = true, input_ranges = nothing, bound = "clip")
             @assert bound in ["wrap", "clip"]
             return new(tiles, tilings, dims, offset, scale_output, input_ranges, bound)
         end
@@ -80,7 +79,7 @@ mutable struct TC
         # wrap or clip are the same along all dims
 
 
-        return new(c, rng, ranges, _tiles, _input_ranges, _tiling_offsets, _total_tiles)
+        return new(c, rng, ranges, _tiles, _input_ranges, _tiling_offsets, _total_tiles, _wrap_tiles)
     end
 end
 
@@ -157,7 +156,7 @@ function _build_offset(n::Int, tiles::Array, c::TileCoderConfig, rng::Optional(A
 
     if c.offset == "random"
         @assert rng !== nothing
-        return rand(rng, length(tiles))
+        return rand(rng, 1, length(tiles))
     end
 
     error("Unknown offset type")
@@ -169,6 +168,9 @@ function get_tc_indices(dims::Int, tiles::Array, tilings::Int, bounds::Array, of
     pos = apply_bounds(pos, bounds)
     res = Array{Int, 1}(undef, tilings)
     tiles_per_tiling = prod(tiles)
+
+    # println("offsets: ", size(offsets), typeof(offsets))
+    # offsets: (16, 4)Matrix{Float64}
 
     for ntl=1:tilings
         tmp = copy(pos)

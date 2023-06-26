@@ -1,4 +1,5 @@
 using TileCoder
+using Random
 
 
 tiles = 4
@@ -10,10 +11,10 @@ input_ranges=[
     (-2., 2.),
     (-2., 2.),
 ]
-arr = [0.99, 0.99, 1.99, 1.99]
+arr = [0.5, 0.99, 0.9, 1.99]
 
-c = TileCoderConfig(tiles, tilings, dims; input_ranges=input_ranges, scale_output = false, bound="wrap")
-tc = TC(c)
+c = TileCoderConfig(tiles, tilings, dims; input_ranges=input_ranges, scale_output = false, bound="clip", offset="random")
+tc = TC(c, MersenneTwister(1234))
 
 
 println(get_indices(tc, arr))

@@ -43,6 +43,7 @@ struct TileCoderConfig
 
     function TileCoderConfig(tiles, tilings, dims; offset = "cascade", scale_output = true, input_ranges = nothing, bound = "wrap")
             # return new(tiles, tilings, dims, offset, scale_output, input_ranges, bound)
+            @assert bound in ["wrap", "clip"]
             return new(tiles, tilings, dims, offset, scale_output, input_ranges, bound)
         end
 end
@@ -55,6 +56,7 @@ mutable struct TC
     _input_ranges
     _tiling_offsets:: Array
     _total_tiles:: Int
+    _wrap_tiles:: Bool
 
     function TC(c, rng = nothing)
 
@@ -66,17 +68,19 @@ mutable struct TC
 
         _tiles = _normalize_tiles(c.tiles, c.dims)
         _input_ranges = _normalize_scalars(ranges)
-
-        x = [ _build_offset(ntl, _tiles, c, rng) for ntl=0:c.tilings-1]
-        _tilitng_offsets = Array{Float64, 2}(undef, c.tilings, c.dims)
-        for i=1:c.tilings
-            for j=1:c.dims
-                _tilitng_offsets[i, j] = x[i][j]
-            end
-        end
+        _tiling_offsets = vcat([_build_offset(ntl, _tiles, c, rng) for ntl=0:c.tilings-1]...)
         _total_tiles = Int(c.tilings * prod(_tiles))
+        if c.bound == "wrap"
+            _wrap_tiles = true
+        elseif c.bound == "clip"
+            _wrap_tiles = false
+        else
+            error("Unknown bound type")
+        end
+        # wrap or clip are the same along all dims
 
-        return new(c, rng, ranges, _tiles, _input_ranges, _tilitng_offsets, _total_tiles)
+
+        return new(c, rng, ranges, _tiles, _input_ranges, _tiling_offsets, _total_tiles)
     end
 end
 
@@ -84,7 +88,7 @@ end
 # public functions
 
 function get_indices(tc::TC, pos::Array{Float64})
-    return get_tc_indices(tc._c.dims, tc._tiles, tc._c.tilings, tc._input_ranges, tc._tiling_offsets, pos)
+    return get_tc_indices(tc._c.dims, tc._tiles, tc._c.tilings, tc._input_ranges, tc._tiling_offsets, tc._wrap_tiles, pos)
 end
 
 function features(tc::TC)
@@ -161,18 +165,20 @@ end
 
 
 
-function get_tc_indices(dims::Int, tiles::Array, tilings::Int, bounds::Array, offsets::Array, pos::Array) :: Array
+function get_tc_indices(dims::Int, tiles::Array, tilings::Int, bounds::Array, offsets::Array, wrap_tiles::Bool, pos::Array) :: Array
     pos = apply_bounds(pos, bounds)
     res = Array{Int, 1}(undef, tilings)
     tiles_per_tiling = prod(tiles)
+
     for ntl=1:tilings
-        for i=axes(pos, 2)
-            pos[i] += offsets[ntl, i]
+        tmp = copy(pos)
+        for i=axes(tmp, 1)
+            tmp[i] += offsets[ntl, i]
         end
-        ind = get_tiling_index(dims, tiles_per_tiling, tiles, pos)
+        ind = get_tiling_index(dims, tiles_per_tiling, tiles, wrap_tiles, tmp)
+        println(ind)
         res[ntl] = ind + tiles_per_tiling * (ntl - 1)
     end
-
     return res
 end
 
@@ -187,12 +193,15 @@ function minmax_scale(pos::Float64, bound::Array) :: Float64
     return (pos - bound[1]) / (bound[2] - bound[1])
 end
 
-
-function get_tiling_index(dims::Int, tiles_per_tiling::Int, tiles::Array, arr::Array) :: Int
+function get_tiling_index(dims::Int, tiles_per_tiling::Int, tiles::Array, wrap_tiles::Bool, arr::Array) :: Int
     t = tiles_per_tiling
     ind = 1
     for i=1:dims
-        id_along_axis = floor(arr[i] * tiles[i]) % tiles[i]
+        if wrap_tiles
+            id_along_axis = floor(arr[i] * tiles[i]) % tiles[i]
+        else
+            id_along_axis = min(max(floor(arr[i] * tiles[i]), 0),tiles[i]-1)     
+        end
         t = t / tiles[i]
         ind = ind + id_along_axis * t
     end

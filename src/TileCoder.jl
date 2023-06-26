@@ -168,17 +168,12 @@ function get_tc_indices(dims::Int, tiles::Array, tilings::Int, bounds::Array, of
     pos = apply_bounds(pos, bounds)
     res = Array{Int, 1}(undef, tilings)
     tiles_per_tiling = prod(tiles)
-
-    # println("offsets: ", size(offsets), typeof(offsets))
-    # offsets: (16, 4)Matrix{Float64}
-
     for ntl=1:tilings
         tmp = copy(pos)
         for i=axes(tmp, 1)
             tmp[i] += offsets[ntl, i]
         end
         ind = get_tiling_index(dims, tiles_per_tiling, tiles, wrap_tiles, tmp)
-        println(ind)
         res[ntl] = ind + tiles_per_tiling * (ntl - 1)
     end
     return res

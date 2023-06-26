@@ -13,7 +13,7 @@ using Random
     @test TileCoderConfig(1, 2, 3).offset == "cascade"
     @test TileCoderConfig(1, 2, 3).scale_output == true
     @test TileCoderConfig(1, 2, 3).input_ranges === nothing
-    @test TileCoderConfig(1, 2, 3).bound == "wrap"
+    @test TileCoderConfig(1, 2, 3).bound == "clip"
     @test TileCoderConfig([1 2 3], 2, 3).tiles == [1 2 3]
     @test TileCoderConfig(1, 2, 3; input_ranges = [(0.0, 1.0), (1.0, 2.5), (0.0, 1.0)]).input_ranges == [(0.0, 1.0), (1.0, 2.5), (0.0, 1.0)]
 
@@ -128,26 +128,26 @@ using Random
 
     
     # get_tiling_idx
-    @test get_tiling_index(1, 8, [8], [0.0]) == 1
-    @test get_tiling_index(1, 8, [8], [0.49]) == 4
-    @test get_tiling_index(1, 8, [8], [0.99]) == 8
+    @test get_tiling_index(1, 8, [8], true, [0.0]) == 1
+    @test get_tiling_index(1, 8, [8], true, [0.49]) == 4
+    @test get_tiling_index(1, 8, [8], true, [0.99]) == 8
 
-    @test get_tiling_index(2, 4, [2 2], [0.0 0.0]) == 1
-    @test get_tiling_index(2, 4, [2 2], [0.99 0.99]) == 4
+    @test get_tiling_index(2, 4, [2 2], true, [0.0 0.0]) == 1
+    @test get_tiling_index(2, 4, [2 2], true, [0.99 0.99]) == 4
 
 
 
-    @test get_tiling_index(4, 256, [4 4 4 4], [0.0 0.0 0.0 0.0]) == 1
-    @test get_tiling_index(4, 256, [4 4 4 4], [0.0 0.0 0.0 0.999]) == 4
-    @test get_tiling_index(4, 256, [4 4 4 4], [0.0 0.0 0.999 0.999]) == 16
+    @test get_tiling_index(4, 256, [4 4 4 4], true, [0.0 0.0 0.0 0.0]) == 1
+    @test get_tiling_index(4, 256, [4 4 4 4], true, [0.0 0.0 0.0 0.999]) == 4
+    @test get_tiling_index(4, 256, [4 4 4 4], true, [0.0 0.0 0.999 0.999]) == 16
     # println(get_tiling_index(4, 256, [4 4 4 4], [0.8 0.7 -0.3 0.46]))
 
 
     # get_tc_indices
-    # get_tc_indices(dims::Int, tiles::Array, tilings::Int, bounds::Array, offsets::Array, pos::Array)
-    @test get_tc_indices(1, [8], 1, [0.; 1.;;], [0.], [0.0]) == [1]
-    @test get_tc_indices(1, [8], 2, [0.; 1.;;], [0.; 0.;;], [0.0]) == [1, 9]
-    @test get_tc_indices(1, [8], 1, [0.; 1.;;], [0.], [0.0]) == [1]
+    # get_tc_indices(tc._c.dims, tc._tiles, tc._c.tilings, tc._input_ranges, tc._tiling_offsets, tc._wrap_tiles, pos)
+    @test get_tc_indices(1, [8], 1, [0.; 1.;;], [0.], false, [0.0]) == [1]
+    @test get_tc_indices(1, [8], 2, [0.; 1.;;], [0.; 0.;;], false, [0.0]) == [1, 9]
+    @test get_tc_indices(1, [8], 1, [0.; 1.;;], [0.], false, [0.0]) == [1]
 
 
 
